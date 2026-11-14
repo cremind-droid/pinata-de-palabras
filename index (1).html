@@ -1,0 +1,702 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>[hidden]{display:none!important}img{max-width:100%}</style>
+<title>Piñata de Palabras</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Nunito:wght@400;600;700;800&display=swap">
+<style>
+/* Layout: word card on top, wide fiesta stage below with five small hanging piñatas, movement controls under it. Single bright theme by choice. */
+:root{
+  --ink:#2B1640; --paper:#FFF4F8; --card:#FFFFFF; --line:#EBD3E0; --muted:#6E5A80;
+  --fuchsia:#D81B72; --marigold:#FFB000; --teal:#0F9D96; --sky1:#BDEBF0; --sky2:#FFF1DA;
+  --good:#1E8A4F; --bad:#C8352A; --hover:#FFE3EF;
+  --display:"Baloo 2","Trebuchet MS",system-ui,sans-serif;
+  --body:"Nunito",system-ui,-apple-system,"Segoe UI",sans-serif;
+  color-scheme:light;
+}
+html,body{background:var(--paper);color:var(--ink)}
+body{font-family:var(--body);font-size:16px}
+.wrap{max-width:1180px;margin:0 auto;padding-block:14px 28px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:14px}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+h1{font-family:var(--display);font-weight:800;font-size:clamp(26px,3.6vw,38px);line-height:1;margin:0;color:var(--fuchsia);letter-spacing:-.5px}
+h1 span{color:var(--teal)}
+.tools{display:flex;gap:8px;flex-wrap:wrap}
+.btn{font:800 15px var(--body);border:2px solid var(--ink);background:var(--card);color:var(--ink);border-radius:999px;padding:8px 16px;cursor:pointer;box-shadow:0 3px 0 var(--ink);transition:transform .08s,box-shadow .08s;display:inline-flex;align-items:center;gap:6px;user-select:none;-webkit-user-select:none}
+.btn:active{transform:translateY(3px);box-shadow:0 0 0 var(--ink)}
+.btn.primary{background:var(--fuchsia);color:#fff}
+.btn:focus-visible,.say:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid var(--teal);outline-offset:3px}
+
+.top{background:var(--card);border:3px solid var(--ink);border-radius:20px;padding:14px 20px;box-shadow:0 5px 0 var(--ink);display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px 24px;align-items:center}
+@media (max-width:720px){.top{grid-template-columns:minmax(0,1fr)}}
+.label{font-size:13px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.chip{font-size:12px;font-weight:800;background:#FFF0C2;border:1.5px solid var(--marigold);color:var(--ink);border-radius:999px;padding:2px 10px;margin-left:8px;letter-spacing:0;text-transform:none}
+.wordrow{display:flex;align-items:center;gap:14px;margin-top:2px}
+.word{font-family:var(--display);font-weight:800;font-size:clamp(34px,5.4vw,56px);line-height:1.05;text-wrap:balance;overflow-wrap:anywhere;min-width:0}
+.say{flex:none;width:50px;height:50px;border-radius:50%;border:2px solid var(--ink);background:var(--marigold);color:var(--ink);cursor:pointer;display:grid;place-items:center;box-shadow:0 3px 0 var(--ink);padding:0}
+.say:active{transform:translateY(3px);box-shadow:none}
+.say svg{width:25px;height:25px}
+.feedback{min-height:1.4em;font-weight:800;font-size:17px;margin-top:4px}
+.feedback.good{color:var(--good)} .feedback.bad{color:var(--bad)}
+.stats{display:grid;grid-template-columns:repeat(3,auto);gap:22px}
+.stat b{display:block;font-family:var(--display);font-size:30px;line-height:1;font-variant-numeric:tabular-nums}
+.stat span{font-size:12px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;white-space:nowrap}
+
+.stage{position:relative;border:3px solid var(--ink);border-radius:20px;overflow:hidden;background:linear-gradient(var(--sky1),var(--sky2) 88%);aspect-ratio:16/9;width:min(100%, max(560px, calc((100vh - 330px) * 1.7778)));max-width:100%;margin-inline:auto;box-sizing:border-box;touch-action:none;user-select:none;-webkit-user-select:none}
+.stage svg,.stage canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.stage canvas{pointer-events:none}
+.slot{cursor:pointer}
+.tagtx{font-family:var(--body);font-weight:800;fill:var(--ink)}
+.tagbg{fill:#fff;transition:fill .2s}
+.tag.right .tagbg{fill:var(--good)} .tag.right .tagtx{fill:#fff}
+.tag.wrong .tagbg{fill:var(--bad)} .tag.wrong .tagtx{fill:#fff}
+.c{transform-box:fill-box;transform-origin:center;transition:opacity .2s}
+.pm{fill:var(--pm)} .pa{fill:var(--pa)} .pb{fill:var(--pb)} .pc{fill:var(--pc)}
+#mouthO{opacity:0}
+#mouthO.talking{animation:talk .26s steps(2) infinite}
+@keyframes talk{from{opacity:0}to{opacity:1}}
+.pop{position:absolute;font-family:var(--display);font-weight:800;font-size:clamp(18px,3vw,34px);color:var(--marigold);-webkit-text-stroke:2px var(--ink);paint-order:stroke fill;pointer-events:none;transform:translate(-50%,-50%);white-space:nowrap}
+.pop.miss{color:#fff}
+.banner{position:absolute;left:50%;top:45%;transform:translate(-50%,-50%);background:var(--fuchsia);color:#fff;font-family:var(--display);font-weight:800;font-size:clamp(22px,4vw,42px);line-height:1.1;padding:10px 24px;border:3px solid var(--ink);border-radius:16px;text-align:center;box-shadow:0 6px 0 var(--ink);max-width:90%;pointer-events:none}
+.bubble{position:absolute;background:#fff;color:var(--ink);border:3px solid var(--ink);border-radius:16px;padding:2px 14px;font-family:var(--display);font-weight:800;font-size:clamp(16px,2.6vw,30px);line-height:1.2;max-width:40%;overflow-wrap:anywhere;pointer-events:none;box-shadow:0 4px 0 var(--ink)}
+.bubble::before{content:"";position:absolute;left:12px;top:-12px;width:18px;height:18px;background:#fff;border-left:3px solid var(--ink);border-top:3px solid var(--ink);transform:rotate(45deg) skew(8deg,8deg)}
+.bubble.flip::before{left:auto;right:12px}
+
+.controls{display:flex;justify-content:center;align-items:center;gap:14px;flex-wrap:wrap}
+.move{width:64px;height:56px;justify-content:center;font-size:24px;padding:0;touch-action:none}
+.swing{background:var(--marigold);font-size:20px;padding:12px 34px}
+.hint{text-align:center;color:var(--muted);font-size:14px;margin:0;line-height:1.5;text-wrap:balance}
+
+.modal[hidden]{display:none}
+.modal{position:fixed;inset:0;background:rgba(43,22,64,.55);display:grid;place-items:center;padding:16px;z-index:20}
+.sheet{background:var(--card);color:var(--ink);border:3px solid var(--ink);border-radius:20px;max-width:640px;width:100%;max-height:calc(100vh - 32px);overflow:auto;padding:20px;display:flex;flex-direction:column;gap:14px;box-sizing:border-box}
+.sheet h2{font-family:var(--display);font-size:28px;margin:0;line-height:1.1}
+.sheet p{margin:0;line-height:1.5;max-width:65ch}
+.sheet code{background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:1px 6px}
+.row{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+textarea{width:100%;min-height:220px;font:15px/1.5 ui-monospace,Menlo,Consolas,monospace;border:2px solid var(--ink);border-radius:12px;padding:10px;box-sizing:border-box;background:var(--paper);color:var(--ink);resize:vertical}
+select{font:700 15px var(--body);border:2px solid var(--ink);border-radius:10px;padding:6px 10px;background:var(--card);color:var(--ink)}
+.status{font-weight:700;min-height:1.4em}
+.status.err{color:var(--bad)} .status.ok{color:var(--good)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Piñata de <span>Palabras</span></h1>
+    <div class="tools">
+      <button class="btn primary" id="openList" type="button">Word list</button>
+      <button class="btn" id="voiceBtn" type="button" aria-pressed="true">Voice: on</button>
+      <button class="btn" id="soundBtn" type="button" aria-pressed="true">Sound: on</button>
+      <button class="btn" id="fsBtn" type="button">Full screen</button>
+    </div>
+  </header>
+
+  <section class="top" aria-live="polite">
+    <div>
+      <div class="label">¿Qué significa? <span class="chip" id="sampleChip">Class list</span></div>
+      <div class="wordrow">
+        <button class="say" id="sayBtn" type="button" aria-label="Hear the word again" title="Hear the word again (S)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor"/><path d="M16.5 8.5a5 5 0 0 1 0 7"/><path d="M19 6a8.5 8.5 0 0 1 0 12"/></svg></button>
+        <div class="word" id="word" lang="es">el perro</div>
+      </div>
+      <div class="feedback" id="feedback">Hit the piñata with the right English meaning.</div>
+    </div>
+    <div class="stats">
+      <div class="stat"><b id="sFull">0</b><span>Full piñatas</span></div>
+      <div class="stat"><b id="sCorrect">0/0</b><span>Correct</span></div>
+      <div class="stat"><b id="sStreak">0</b><span>Streak</span></div>
+    </div>
+  </section>
+
+  <div class="stage" id="stage">
+    <svg id="scene" viewBox="0 0 640 360" role="img" aria-label="A blindfolded child with a stick stands under five small piñatas, each labeled with an English word"></svg>
+    <canvas id="fx"></canvas>
+    <div class="bubble" id="bubble" lang="es" hidden></div>
+  </div>
+
+  <div class="controls">
+    <button class="btn move" id="leftBtn" type="button" aria-label="Move left">◀</button>
+    <button class="btn swing" id="swingBtn" type="button">Swing!</button>
+    <button class="btn move" id="rightBtn" type="button" aria-label="Move right">▶</button>
+  </div>
+  <p class="hint">Move the child with the arrow keys, the ◀ ▶ buttons, or by dragging along the floor. Swing with the space bar or the Swing button. Tapping a piñata (or pressing 1–5) walks over and swings at it.</p>
+</div>
+
+<div class="modal" id="modal" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="mTitle">
+    <h2 id="mTitle">Your word list</h2>
+    <p>Put one word per line: Spanish first, then English, separated by a comma, a tab, or an equals sign. Example: <code>el perro, the dog</code>. You can also upload a .txt, .csv, or Excel file with Spanish in the first column and English in the second. Five piñatas hang at a time, so lists of 5 or more words work best.</p>
+    <textarea id="listText" spellcheck="false" aria-label="Word list"></textarea>
+    <div class="row">
+      <label class="btn" for="file">Upload a file</label>
+      <input type="file" id="file" accept=".txt,.csv,.tsv,.xlsx,.xls" class="sr">
+      <label class="row" for="fillSel" style="gap:8px;font-weight:800">Right answers to fill a piñata
+        <select id="fillSel"><option selected>3</option><option>4</option><option>5</option></select>
+      </label>
+    </div>
+    <div class="status" id="status"></div>
+    <div class="row">
+      <button class="btn" id="useSample" type="button">Use class list</button>
+      <div class="tools">
+        <button class="btn" id="cancel" type="button">Cancel</button>
+        <button class="btn primary" id="save" type="button">Save and play</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const SAMPLE = `buenos días, good morning
+¿qué tal?, how's it going?
+mañana, tomorrow
+hoy, today
+hay, there is / there are
+semana, week
+gracias, thank you
+por favor, please
+de nada, you're welcome
+fecha, date
+cumpleaños, birthday
+veinte, twenty
+día, day
+mes, month
+calendario, calendar`;
+const PALETTES = [
+  {pm:'#FF4FA3',pa:'#FFB000',pb:'#12A5A0',pc:'#7CC242'},
+  {pm:'#FFB000',pa:'#D81B72',pb:'#2F7DE1',pc:'#12A5A0'},
+  {pm:'#12A5A0',pa:'#FF4FA3',pb:'#FFB000',pc:'#8E44D8'},
+  {pm:'#8E44D8',pa:'#FFB000',pb:'#7CC242',pc:'#FF4FA3'},
+  {pm:'#2F7DE1',pa:'#FFB000',pb:'#FF4FA3',pc:'#7CC242'},
+  {pm:'#7CC242',pa:'#8E44D8',pb:'#FFB000',pc:'#FF4FA3'}
+];
+const CANDY = ['#FF4FA3','#FFB000','#12A5A0','#7CC242','#8E44D8','#2F7DE1','#E8402E'];
+const VW = 640, VH = 360, FLOOR = 330, CS = .85, NS = 'http://www.w3.org/2000/svg';
+const LENS = [104,126,98,122,108];
+const DOTS = (()=>{ const d=[]; [[9,[-6,0,6]],[3,[-9,-3,3,9]],[-3,[-9,-3,3,9]],[-9,[-6,0,6]]].forEach(([y,xs])=>xs.forEach(x=>d.push([x,y]))); return d; })();
+
+const $ = id => document.getElementById(id);
+const store = {
+  get(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } },
+  set(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
+};
+const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
+const shuffle = a => { for(let i=a.length-1;i>0;i--){ const j=(Math.random()*(i+1))|0; [a[i],a[j]]=[a[j],a[i]]; } return a; };
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+let words = [], deck = [], current = null;
+let fillMax = 3, fulls = 0, correct = 0, tries = 0, streak = 0;
+let locked = true, soundOn = true, voiceOn = true, usingSample = true, palIx = 0;
+let slots = [];
+const child = { x: 60, target: null, autoSwing: -1, legA: 0, phase: 0, swing: null };
+const keys = { left:false, right:false };
+
+/* ---------- parsing ---------- */
+function splitLine(line){
+  if (line.includes('\t')) { const i=line.indexOf('\t'); return [line.slice(0,i), line.slice(i+1)]; }
+  for (const sep of [' = ','=',';',',',' - ',' – ',':']) { const i=line.indexOf(sep); if (i>0) return [line.slice(0,i), line.slice(i+sep.length)]; }
+  return null;
+}
+const clean = s => s.replace(/^["'\s]+|["'\s]+$/g,'').replace(/\t/g,' ').trim();
+function parseList(text){
+  const out=[], seen=new Set();
+  for (const raw of text.split(/\r?\n/)) {
+    const line=raw.trim(); if(!line) continue;
+    const p=splitLine(line); if(!p) continue;
+    const es=clean(p[0]), en=clean(p[1]); if(!es||!en) continue;
+    if (['spanish','español','espanol','palabra','word','vocabulario'].includes(es.toLowerCase())) continue;
+    const k=es.toLowerCase(); if(seen.has(k)) continue; seen.add(k); out.push({es,en});
+  }
+  return out;
+}
+const toText = list => list.map(w => w.es.includes(',') ? `${w.es} = ${w.en}` : `${w.es}, ${w.en}`).join('\n');
+const uniqueEnglish = list => [...new Set(list.map(w=>w.en.toLowerCase()))].length;
+
+/* ---------- scene ---------- */
+const pol = (a,r) => { const t=a*Math.PI/180; return [+(r*Math.cos(t)).toFixed(1), +(r*Math.sin(t)).toFixed(1)]; };
+function bodyMarkup(){
+  const cones = [-90,-18,54,126,198].map((a,k)=>{
+    const b1=pol(a-26,19), b2=pol(a+26,19), t=pol(a,40), cls=['pa','pb','pc','pa','pb'][k];
+    const tas = a===-90 ? '' : [-14,0,14].map((d,j)=>{ const e=pol(a+d,9); return `<line x1="${t[0]}" y1="${t[1]}" x2="${(t[0]+e[0]).toFixed(1)}" y2="${(t[1]+e[1]).toFixed(1)}" style="stroke:var(${j===1?'--pm':'--pc'})" stroke-width="2.5" stroke-linecap="round"/>`; }).join('');
+    return `<polygon points="${b1} ${t} ${b2}" class="${cls}" stroke="#2B1640" stroke-width="1.8" stroke-linejoin="round"/>${tas}`;
+  }).join('');
+  const dots = DOTS.map(([x,y],k)=>`<circle class="c" cx="${x}" cy="${y}" r="2.9" fill="${CANDY[k%CANDY.length]}" style="opacity:0"/>`).join('');
+  return `${cones}<circle r="22" class="pm" stroke="#2B1640" stroke-width="2"/>
+    <circle r="14" fill="#FFF8E7" stroke="#2B1640" stroke-width="1.5"/>${dots}
+    <path d="M-8 -9 Q-3 -13 3 -12" stroke="#fff" stroke-width="2" fill="none" opacity=".8" stroke-linecap="round"/>`;
+}
+function slotMarkup(s){
+  const L=s.len, body=bodyMarkup();
+  return `<line x1="0" y1="-4" x2="0" y2="${L-40}" stroke="#6B4A2B" stroke-width="2"/>
+  <g class="pbody" transform="translate(0 ${L})">
+    <g class="whole">${body}</g>
+    <g class="half" clip-path="url(#cl${s.i})" style="display:none">${body}</g>
+    <g class="half" clip-path="url(#cr${s.i})" style="display:none">${body}</g>
+  </g>
+  <g class="tag" transform="translate(0 ${L+22})">
+    <line x1="0" y1="0" x2="0" y2="12" stroke="#2B1640" stroke-width="1.5"/>
+    <rect class="tagbg" x="-46" y="12" width="92" height="30" rx="8" stroke="#2B1640" stroke-width="2"/>
+    <text class="tagtx" x="0" y="32" text-anchor="middle" font-size="15"></text>
+  </g>`;
+}
+function buildScene(){
+  let flags='';
+  for (let i=0;i<16;i++){
+    const x=6+i*40, cx=x+14, y=4+18*(1-Math.pow((cx-320)/320,2)), col=CANDY[i%CANDY.length];
+    flags += `<g transform="translate(${x} ${y.toFixed(1)})"><path d="M0 0 H28 V24 L24.5 28 L21 24 L17.5 28 L14 24 L10.5 28 L7 24 L3.5 28 L0 24Z" fill="${col}"/><circle cx="9" cy="8" r="2.3" fill="#fff" opacity=".55"/><circle cx="19" cy="8" r="2.3" fill="#fff" opacity=".55"/><path d="M8 15 Q14 20 20 15" stroke="#fff" stroke-opacity=".55" stroke-width="2" fill="none"/></g>`;
+  }
+  $('scene').innerHTML = `<defs id="defs"></defs>
+  <path d="M0 4 Q320 40 640 4" stroke="#2B1640" stroke-width="1.5" fill="none"/>${flags}
+  <rect x="0" y="${FLOOR}" width="640" height="30" fill="#F3C47E"/><path d="M0 ${FLOOR} H640" stroke="#2B1640" stroke-width="2"/>
+  <g id="slots"></g>
+  <g id="child">
+    <ellipse cx="126" cy="270" rx="32" ry="5" fill="#2B1640" opacity=".15"/>
+    <path d="M114 170 L102 196" stroke="#C68A5A" stroke-width="8" stroke-linecap="round"/>
+    <g id="leg1"><path d="M119 212 L113 262" stroke="#2B1640" stroke-width="10" stroke-linecap="round"/><ellipse cx="109" cy="265" rx="10" ry="5" fill="#D81B72"/></g>
+    <g id="leg2"><path d="M133 212 L140 262" stroke="#2B1640" stroke-width="10" stroke-linecap="round"/><ellipse cx="145" cy="265" rx="10" ry="5" fill="#D81B72"/></g>
+    <rect x="108" y="196" width="36" height="22" rx="6" fill="#0F9D96"/>
+    <rect x="107" y="156" width="38" height="48" rx="13" fill="#FFB000" stroke="#2B1640" stroke-width="2"/>
+    <rect x="108" y="176" width="36" height="6" fill="#D81B72"/>
+    <circle cx="126" cy="135" r="20" fill="#C68A5A"/>
+    <path d="M106 133 Q107 112 127 113 Q147 114 146 133 Q139 123 126 123 Q114 123 106 133Z" fill="#3A2418"/>
+    <g id="tie"><path d="M107 133 L90 126 L93 136Z M107 136 L92 146 L97 137Z" fill="#D81B72"/></g>
+    <rect x="104" y="129" width="44" height="9" rx="3" fill="#D81B72"/>
+    <path d="M119 147 Q127 153 135 147" stroke="#2B1640" stroke-width="2" fill="none" stroke-linecap="round"/>
+    <ellipse id="mouthO" cx="127" cy="150" rx="4.5" ry="3.5" fill="#2B1640"/>
+    <g id="bat" transform="rotate(155 138 168)">
+      <line x1="138" y1="168" x2="160" y2="168" stroke="#C68A5A" stroke-width="8" stroke-linecap="round"/>
+      <line x1="156" y1="168" x2="338" y2="168" stroke="#8B5A2B" stroke-width="7" stroke-linecap="round"/>
+      <line x1="280" y1="168" x2="292" y2="168" stroke="#D81B72" stroke-width="7.5"/>
+      <line x1="306" y1="168" x2="318" y2="168" stroke="#FFB000" stroke-width="7.5"/>
+      <circle cx="161" cy="168" r="6" fill="#C68A5A"/>
+    </g>
+  </g>`;
+}
+function applyPal(s){ const p=PALETTES[s.pal % PALETTES.length]; for (const k in p) s.g.style.setProperty('--'+k, p[k]); }
+function buildSlots(){
+  const n = clamp(uniqueEnglish(words), 3, 5);
+  const defs = $('defs'); defs.innerHTML = '';
+  const zig = '-2,-30 4,-14 -4,0 3,12 -3,26 2,70';
+  slots = [];
+  $('slots').innerHTML = '';
+  for (let i=0;i<n;i++){
+    defs.insertAdjacentHTML('beforeend', `<clipPath id="cl${i}" clipPathUnits="userSpaceOnUse"><polygon points="-70,-70 1,-70 ${zig} -70,70"/></clipPath><clipPath id="cr${i}" clipPathUnits="userSpaceOnUse"><polygon points="1,-70 70,-70 70,70 ${zig.split(' ').reverse().join(' ')}"/></clipPath>`);
+    const g = document.createElementNS(NS,'g'); g.setAttribute('class','slot'); g.dataset.i = i;
+    $('slots').appendChild(g);
+    const s = { i, g, x: 320 - (n-1)*50 + i*100, len: LENS[i%LENS.length], pal: palIx++, level: 0, label: '', phase: Math.random()*6, state: 'hang', shake: null, drop: null, bust: null };
+    g.innerHTML = slotMarkup(s); applyPal(s);
+    slots.push(s);
+  }
+}
+function setLabel(s, text){
+  s.label = text;
+  const tx = s.g.querySelector('.tagtx'), bg = s.g.querySelector('.tagbg'); if (!tx) return;
+  let fs = 15; tx.setAttribute('font-size', fs); tx.textContent = text;
+  let lines = [text];
+  const parts = text.split(/\s+/);
+  if (tx.getComputedTextLength() > 84 && parts.length > 1){
+    let best = null;
+    for (let k=1;k<parts.length;k++){ const a=parts.slice(0,k).join(' '), b=parts.slice(k).join(' '), m=Math.max(a.length,b.length); if(!best||m<best.m) best={a,b,m}; }
+    lines = [best.a, best.b];
+  }
+  tx.textContent = '';
+  lines.forEach((ln,k)=>{ const sp=document.createElementNS(NS,'tspan'); sp.setAttribute('x',0); sp.setAttribute('dy', k ? '1.1em' : '0'); sp.textContent = ln; tx.appendChild(sp); });
+  const w = Math.max(...[...tx.children].map(sp=>{ try{ return sp.getComputedTextLength(); }catch(e){ return 0; } }));
+  if (w > 84) { fs = fs*84/w; tx.setAttribute('font-size', fs.toFixed(1)); }
+  const h = 30 + (lines.length-1)*fs*1.1;
+  bg.setAttribute('height', h.toFixed(1));
+  tx.setAttribute('y', (12 + h/2 - (lines.length-1)*fs*1.1/2 + fs*.36).toFixed(1));
+}
+function setTag(s, st){ const t=s.g.querySelector('.tag'); if(!t) return; t.classList.toggle('right', st==='right'); t.classList.toggle('wrong', st==='wrong'); }
+function showCandy(s, animate){
+  const count = Math.round(Math.min(s.level, fillMax)/fillMax * DOTS.length);
+  s.g.querySelectorAll('.whole, .half').forEach(h => h.querySelectorAll('.c').forEach((c,k)=>{
+    const on = k < count, was = c.style.opacity === '1';
+    c.style.opacity = on ? '1' : '0';
+    if (on && !was && animate && !reduce) c.animate([{transform:'scale(0)'},{transform:'scale(1.6)'},{transform:'scale(1)'}],{duration:450,delay:(k%5)*40,easing:'ease-out'});
+  }));
+}
+
+/* ---------- fx ---------- */
+const cv = $('fx'), ctx = cv.getContext('2d');
+let parts = [];
+function sizeCanvas(){ const r=$('stage').getBoundingClientRect(), d=window.devicePixelRatio||1; cv.width=Math.max(1,r.width*d); cv.height=Math.max(1,r.height*d); }
+function emit(x, y, n, big){
+  const s = cv.width/VW;
+  for (let i=0;i<n;i++){
+    const ang = big ? Math.random()*Math.PI*2 : (-Math.PI/2 + (Math.random()-.5)*2.4);
+    const sp = (big ? 90+Math.random()*200 : 60+Math.random()*120)*s;
+    parts.push({x:x*s, y:y*s, vx:Math.cos(ang)*sp, vy:Math.sin(ang)*sp-(big?80*s:0), r:(big?3.5+Math.random()*2.5:1.6+Math.random()*1.6)*s,
+      c:CANDY[(Math.random()*CANDY.length)|0], k:big?(Math.random()<.5?'wrap':'ball'):'bit', rot:Math.random()*6, vr:(Math.random()-.5)*10, life:big?4.5:1.1});
+  }
+}
+function drawParts(dt){
+  const s = cv.width/VW, floor = FLOOR*s, g = 520*s;
+  ctx.clearRect(0,0,cv.width,cv.height);
+  parts = parts.filter(p=>p.life>0);
+  for (const p of parts){
+    p.vy += g*dt; p.x += p.vx*dt; p.y += p.vy*dt; p.rot += p.vr*dt; p.life -= dt;
+    if (p.y > floor-p.r){ p.y = floor-p.r; p.vy *= -.35; p.vx *= .8; p.vr *= .7; }
+    ctx.save(); ctx.globalAlpha = Math.min(1, p.life/.6); ctx.translate(p.x,p.y); ctx.rotate(p.rot); ctx.fillStyle = p.c;
+    if (p.k==='wrap'){ ctx.beginPath(); ctx.ellipse(0,0,p.r*1.3,p.r,0,0,7); ctx.fill(); ctx.beginPath();
+      ctx.moveTo(-p.r*1.2,0); ctx.lineTo(-p.r*2.4,-p.r*.8); ctx.lineTo(-p.r*2.4,p.r*.8); ctx.closePath();
+      ctx.moveTo(p.r*1.2,0); ctx.lineTo(p.r*2.4,-p.r*.8); ctx.lineTo(p.r*2.4,p.r*.8); ctx.closePath(); ctx.fill(); }
+    else if (p.k==='ball'){ ctx.beginPath(); ctx.arc(0,0,p.r,0,7); ctx.fill(); ctx.fillStyle='rgba(255,255,255,.6)'; ctx.beginPath(); ctx.arc(-p.r*.35,-p.r*.35,p.r*.3,0,7); ctx.fill(); }
+    else ctx.fillRect(-p.r,-p.r/2,p.r*2,p.r);
+    ctx.restore();
+  }
+}
+function pop(text, x, y, miss){
+  const el=document.createElement('div'); el.className='pop'+(miss?' miss':''); el.textContent=text;
+  el.style.left=(x/VW*100)+'%'; el.style.top=(y/VH*100)+'%'; $('stage').appendChild(el);
+  el.animate([{transform:'translate(-50%,-50%) scale(.4)',opacity:0},{transform:'translate(-50%,-90%) scale(1.1)',opacity:1,offset:.3},{transform:'translate(-50%,-150%) scale(1)',opacity:0}],{duration:1000,easing:'ease-out'}).onfinish=()=>el.remove();
+}
+function banner(text){
+  const b=document.createElement('div'); b.className='banner'; b.textContent=text; $('stage').appendChild(b);
+  b.animate([{transform:'translate(-50%,-50%) scale(.5)',opacity:0},{transform:'translate(-50%,-50%) scale(1.05)',opacity:1,offset:.6},{transform:'translate(-50%,-50%) scale(1)',opacity:1}],{duration:450,easing:'ease-out'});
+  setTimeout(()=>b.remove(), 2000);
+}
+
+/* ---------- sound ---------- */
+let ac = null;
+function audio(){ if(!soundOn) return null; try{ ac = ac || new (window.AudioContext||window.webkitAudioContext)(); if(ac.state==='suspended') ac.resume(); return ac; }catch(e){ return null; } }
+function noise(a,dur){ const b=a.createBuffer(1,Math.floor(a.sampleRate*dur),a.sampleRate), d=b.getChannelData(0); for(let i=0;i<d.length;i++) d[i]=Math.random()*2-1; const s=a.createBufferSource(); s.buffer=b; return s; }
+function tone(a, type, f0, f1, t, dur, vol){ const o=a.createOscillator(), g=a.createGain(); o.type=type; o.frequency.setValueAtTime(f0,t); if(f1) o.frequency.exponentialRampToValueAtTime(f1,t+dur); g.gain.setValueAtTime(.001,t); g.gain.linearRampToValueAtTime(vol,t+.015); g.gain.exponentialRampToValueAtTime(.001,t+dur); o.connect(g).connect(a.destination); o.start(t); o.stop(t+dur+.02); }
+function sThwack(){ const a=audio(); if(!a) return; const t=a.currentTime;
+  const n=noise(a,.15), f=a.createBiquadFilter(), g=a.createGain(); f.type='lowpass'; f.frequency.value=900; g.gain.setValueAtTime(.9,t); g.gain.exponentialRampToValueAtTime(.001,t+.15); n.connect(f).connect(g).connect(a.destination); n.start(t);
+  tone(a,'sine',160,60,t,.2,.6); }
+function sDing(){ const a=audio(); if(!a) return; const t=a.currentTime+.12; tone(a,'triangle',988,0,t,.25,.22); tone(a,'triangle',1319,0,t+.09,.35,.22); }
+function sBust(){ const a=audio(); if(!a) return; const t=a.currentTime;
+  const n=noise(a,.3), f=a.createBiquadFilter(), g=a.createGain(); f.type='bandpass'; f.frequency.value=1500; f.Q.value=.8; g.gain.setValueAtTime(.7,t); g.gain.exponentialRampToValueAtTime(.001,t+.3); n.connect(f).connect(g).connect(a.destination); n.start(t);
+  tone(a,'sawtooth',330,300,t+.25,.25,.08); tone(a,'sawtooth',280,180,t+.5,.5,.08); }
+function sWhoosh(){ const a=audio(); if(!a) return; const t=a.currentTime;
+  const n=noise(a,.35), f=a.createBiquadFilter(), g=a.createGain(); f.type='bandpass'; f.Q.value=1.5; f.frequency.setValueAtTime(400,t); f.frequency.exponentialRampToValueAtTime(2200,t+.3);
+  g.gain.setValueAtTime(.001,t); g.gain.linearRampToValueAtTime(.3,t+.12); g.gain.exponentialRampToValueAtTime(.001,t+.35); n.connect(f).connect(g).connect(a.destination); n.start(t); }
+function sCheer(){ const a=audio(); if(!a) return; const t=a.currentTime; [523,659,784,1047,1319].forEach((fq,i)=>tone(a,'triangle',fq,0,t+i*.09,.4,.25)); }
+
+/* ---------- voice: the child says the Spanish word ---------- */
+const synth = window.speechSynthesis || null;
+let esVoices = [], bubbleT = 0, utter = null, speakSeq = 0, pendingWord = null;
+function loadVoices(){
+  if (!synth) return;
+  const all = synth.getVoices() || [];
+  const rank = x => { let r = ['es-mx','es-us','es-419','es-es'].indexOf(x.lang.replace('_','-').toLowerCase()); if (r < 0) r = 4; return (x.localService ? 0 : 10) + r; };
+  esVoices = all.filter(x => /^es([-_]|$)/i.test(x.lang)).sort((a,b)=>rank(a)-rank(b));
+}
+if (synth){ loadVoices(); try{ synth.addEventListener('voiceschanged', loadVoices); }catch(e){ synth.onvoiceschanged = loadVoices; } }
+else { $('sayBtn').hidden = true; $('voiceBtn').hidden = true; }
+function voicesReady(){
+  return new Promise(res=>{
+    if (!synth || (synth.getVoices()||[]).length) { loadVoices(); return res(); }
+    let done = false; const fin = ()=>{ if (!done){ done = true; loadVoices(); res(); } };
+    try{ synth.addEventListener('voiceschanged', fin, {once:true}); }catch(e){}
+    setTimeout(fin, 1200);
+  });
+}
+const hasInteracted = () => !navigator.userActivation || navigator.userActivation.hasBeenActive;
+function speak(text, fromButton){
+  if (!synth || !voiceOn || !text) return;
+  const seq = ++speakSeq;
+  const b = $('bubble');
+  b.textContent = text; b.hidden = false; placeBubble(); $('mouthO').classList.add('talking');
+  clearTimeout(bubbleT); bubbleT = setTimeout(()=>finishTalk(seq), 4500);
+  // Browsers only allow speech after the first tap or key press on the page.
+  if (!hasInteracted()){ pendingWord = text; return; }
+  try { if (synth.speaking || synth.pending) synth.cancel(); synth.resume(); } catch(e){}
+  const tries = [...esVoices.slice(0,2).map(v=>({voice:v, lang:v.lang})), {lang:'es-MX'}, {lang:'es-ES'}];
+  // A short pause after cancel() avoids a Chrome bug that silently drops the next utterance.
+  voicesReady().then(()=>setTimeout(()=>sayAttempt(text, seq, tries, 0, fromButton), 120));
+}
+function finishTalk(seq){
+  if (seq !== speakSeq) return;
+  $('mouthO').classList.remove('talking'); clearTimeout(bubbleT);
+  bubbleT = setTimeout(()=>{ if (seq === speakSeq) $('bubble').hidden = true; }, 900);
+}
+function sayAttempt(text, seq, tries, n, fromButton){
+  if (seq !== speakSeq || !voiceOn) return;
+  if (n >= tries.length){ finishTalk(seq); voiceProblem(fromButton); return; }
+  const t = tries[n], u = new SpeechSynthesisUtterance(text);
+  if (t.voice) u.voice = t.voice;
+  u.lang = t.lang; u.rate = .85; u.volume = 1;
+  let started = false, moved = false;
+  const next = ()=>{ if (moved || seq !== speakSeq) return; moved = true; try{ synth.cancel(); }catch(e){} setTimeout(()=>sayAttempt(text, seq, tries, n+1, fromButton), 120); };
+  u.onstart = ()=>{ started = true; };
+  u.onend = ()=>{ if (started || moved) finishTalk(seq); else next(); };
+  u.onerror = e=>{
+    if (seq !== speakSeq || e.error === 'interrupted' || e.error === 'canceled') return;
+    if (e.error === 'not-allowed'){ pendingWord = text; finishTalk(seq); return; }
+    next();
+  };
+  utter = u; // keep a reference so the browser doesn't discard it mid-sentence
+  try { synth.resume(); synth.speak(u); } catch(e){ next(); return; }
+  // If nothing starts within a few seconds, try the next voice.
+  setTimeout(()=>{ if (!started && !moved && seq === speakSeq) next(); }, 3000);
+}
+function voiceProblem(fromButton){
+  if (!fromButton) return;
+  const fb = $('feedback');
+  fb.textContent = 'The voice didn’t play on this device. Check that the volume is up and not muted (on an iPad, turn off silent mode), or try the Chrome browser.';
+  fb.className = 'feedback bad';
+}
+['pointerdown','keydown'].forEach(ev=>document.addEventListener(ev, ()=>{
+  if (pendingWord && voiceOn){ const w = pendingWord; pendingWord = null; setTimeout(()=>{ if (current && current.es === w) speak(w); }, 50); }
+}, true));
+function placeBubble(){
+  const b=$('bubble'); if (b.hidden) return;
+  const top = (FLOOR - 118)/VH*100;
+  b.style.top = top+'%';
+  if (child.x > 400){ b.classList.add('flip'); b.style.left='auto'; b.style.right = ((VW-(child.x-22))/VW*100)+'%'; }
+  else { b.classList.remove('flip'); b.style.right='auto'; b.style.left = ((child.x+26)/VW*100)+'%'; }
+}
+
+/* ---------- swinging ---------- */
+const shoulder = () => ({ x: child.x + (138-126)*CS, y: FLOOR + (168-268)*CS });
+const ready = s => s.state==='hang' && !s.drop;
+function findTarget(){
+  let best=-1, bd=1e9;
+  slots.forEach((s,k)=>{ if(!ready(s)) return; const d=Math.abs(s.x-(child.x+62)); if(d<bd){ bd=d; best=k; } });
+  return bd <= 48 ? best : -1;
+}
+function trySwing(force){
+  if (child.swing || locked) return;
+  const k = (force!=null && force>=0 && ready(slots[force]) && Math.abs(slots[force].x-(child.x+62))<=48) ? force : findTarget();
+  let hitA = 300;
+  if (k >= 0){ const sh=shoulder(), s=slots[k]; hitA = Math.atan2(s.len-sh.y, s.x-sh.x)*180/Math.PI; if (hitA < 0) hitA += 360; }
+  child.swing = { t0: performance.now(), k, hitA, done: false };
+}
+function contact(k){
+  if (k < 0 || locked){ sWhoosh(); pop('¡Aire!', child.x+80, 215, true); return; }
+  const s = slots[k]; locked = true; tries++;
+  const ok = s.label.toLowerCase() === current.en.toLowerCase();
+  const fb = $('feedback');
+  if (ok){
+    correct++; streak++; s.level++;
+    sThwack(); sDing();
+    s.shake = { t0: performance.now()/1000, a: 16 };
+    showCandy(s, true); setTag(s,'right');
+    emit(s.x, s.len, 12, false);
+    pop('¡Más dulces!', s.x, s.len-55);
+    fb.textContent = `¡Correcto! ${current.es} = ${current.en}`; fb.className = 'feedback good';
+    if (s.level >= fillMax){ setTimeout(()=>fullBurst(s), 750); setTimeout(newQuestion, 3300); }
+    else setTimeout(newQuestion, 1600);
+  } else {
+    streak = 0; sBust();
+    s.level = 0; showCandy(s, false); setTag(s,'wrong');
+    bust(s);
+    pop('¡Vacía!', s.x, s.len-45, true);
+    const right = slots.find(z => z.label.toLowerCase() === current.en.toLowerCase()); if (right) setTag(right,'right');
+    fb.textContent = `Not quite. ${current.es} means “${current.en}.”`; fb.className = 'feedback bad';
+    setTimeout(()=>respawn(s), 2000);
+    setTimeout(newQuestion, 2900);
+  }
+  renderStats();
+}
+function bust(s){
+  s.state = 'bust'; s.shake = null;
+  const wh = s.g.querySelector('.whole'); if (wh) wh.style.display = 'none';
+  s.g.querySelectorAll('.half').forEach(h => h.style.display = '');
+  const r = () => Math.random();
+  s.bust = { t: 0,
+    h: [{x:0,y:0,vx:-70-r()*50,vy:-150-r()*60,r:0,vr:-120-r()*80},{x:0,y:0,vx:70+r()*50,vy:-150-r()*60,r:0,vr:120+r()*80}],
+    tag: {y:0,vy:-40,r:0,vr:(r()-.5)*60} };
+}
+function fullBurst(s){
+  fulls++; renderStats(); sCheer();
+  bust(s);
+  emit(s.x, s.len, 70, true);
+  banner('¡Piñata llena!');
+  setTimeout(()=>respawn(s), 2000);
+}
+function respawn(s){
+  s.pal = palIx++; s.level = 0; s.state = 'hang'; s.bust = null; s.shake = null;
+  s.g.style.opacity = ''; s.g.innerHTML = slotMarkup(s); applyPal(s);
+  setLabel(s, s.label);
+  s.drop = { t0: performance.now() };
+}
+
+/* ---------- game flow ---------- */
+function renderStats(){
+  $('sFull').textContent = fulls; $('sCorrect').textContent = `${correct}/${tries}`; $('sStreak').textContent = streak;
+  $('sampleChip').hidden = !usingSample;
+}
+function newQuestion(){
+  if (!deck.length){ deck = shuffle(words.slice()); if (current && deck.length>1 && deck[deck.length-1]===current) [deck[0],deck[deck.length-1]]=[deck[deck.length-1],deck[0]]; }
+  current = deck.pop();
+  const pool = shuffle([...new Map(words.filter(w=>w.en.toLowerCase()!==current.en.toLowerCase()).map(w=>[w.en.toLowerCase(),w.en])).values()]);
+  const opts = shuffle([current.en, ...pool.slice(0, slots.length-1)]);
+  slots.forEach((s,k)=>{
+    setTag(s,''); setLabel(s, opts[k]);
+    const t = s.g.querySelector('.tag'); if (t && !reduce) t.animate([{opacity:0},{opacity:1}],{duration:350});
+  });
+  $('word').textContent = current.es;
+  $('feedback').textContent = ''; $('feedback').className = 'feedback';
+  locked = false;
+  const w = current.es; setTimeout(()=>{ if (current && current.es===w) speak(w); }, 300);
+}
+function startGame(){
+  deck = []; current = null; fulls = 0; correct = 0; tries = 0; streak = 0; parts = [];
+  buildSlots(); renderStats(); newQuestion();
+}
+
+/* ---------- animation loop ---------- */
+const easeOutBack = p => { const c1=1.70158, c3=c1+1; return 1 + c3*Math.pow(p-1,3) + c1*Math.pow(p-1,2); };
+let last = performance.now();
+function loop(now){
+  const dt = Math.min(.05, (now-last)/1000); last = now; const t = now/1000;
+  // child movement
+  let vx = 0;
+  if (keys.left) vx -= 1; if (keys.right) vx += 1;
+  if (vx){ child.target = null; child.autoSwing = -1; }
+  else if (child.target != null){
+    const d = child.target - child.x;
+    if (Math.abs(d) < 3){ child.x = child.target; child.target = null; if (child.autoSwing >= 0){ const k=child.autoSwing; child.autoSwing=-1; trySwing(k); } }
+    else vx = Math.sign(d) * Math.min(1, Math.abs(d)/12);
+  }
+  if (vx){ child.x = clamp(child.x + vx*250*dt, 30, 610); child.phase += dt*14; child.legA = Math.sin(child.phase)*22; }
+  else child.legA *= .8;
+  const bob = vx ? -Math.abs(Math.sin(child.phase))*3 : 0;
+  $('child').setAttribute('transform', `translate(${child.x.toFixed(1)} ${(FLOOR+bob).toFixed(1)}) scale(${CS}) translate(-126 -268)`);
+  $('leg1').setAttribute('transform', `rotate(${child.legA.toFixed(1)} 119 212)`);
+  $('leg2').setAttribute('transform', `rotate(${(-child.legA).toFixed(1)} 133 212)`);
+  $('tie').setAttribute('transform', `rotate(${(reduce?0:Math.sin(t*9)*8).toFixed(1)} 106 134)`);
+  // bat
+  let a = 155;
+  const sw = child.swing;
+  if (sw){
+    const p = (now - sw.t0)/620;
+    if (p < .4) a = 155 + (sw.hitA-155)*Math.pow(p/.4, 2);
+    else if (p < .55) a = sw.hitA + 6*Math.sin((p-.4)/.15*Math.PI);
+    else if (p < 1) a = sw.hitA + (155-sw.hitA)*(1-Math.pow(1-(p-.55)/.45, 2));
+    if (p >= .4 && !sw.done){ sw.done = true; contact(sw.k); }
+    if (p >= 1) child.swing = null;
+  }
+  $('bat').setAttribute('transform', `rotate(${a.toFixed(1)} 138 168)`);
+  placeBubble();
+  // piñatas
+  for (const s of slots){
+    let ang = 0, oy = 0;
+    if (s.state === 'hang'){
+      ang = reduce ? 0 : Math.sin(t*1.5 + s.phase)*3;
+      if (s.shake){ const e = t - s.shake.t0; if (e > 1.4) s.shake = null; else ang += s.shake.a*Math.exp(-e*3)*Math.sin(e*13); }
+      if (s.drop){ const e = (now - s.drop.t0)/650; if (e >= 1) s.drop = null; else oy = -(s.len+110)*(1-easeOutBack(e)); }
+    } else if (s.state === 'bust' && s.bust){
+      const b = s.bust; b.t += dt;
+      const floorL = FLOOR - s.len - 16;
+      b.h.forEach((h,j)=>{
+        h.vy += 650*dt; h.x += h.vx*dt; h.y += h.vy*dt; h.r += h.vr*dt;
+        if (h.y > floorL){ h.y = floorL; h.vy *= -.25; h.vx *= .5; h.vr *= .4; }
+        const el = s.g.querySelectorAll('.half')[j]; if (el) el.setAttribute('transform', `translate(${h.x.toFixed(1)} ${h.y.toFixed(1)}) rotate(${h.r.toFixed(1)})`);
+      });
+      const tg = b.tag; tg.vy += 650*dt; tg.y += tg.vy*dt; tg.r += tg.vr*dt;
+      const tagFloor = FLOOR - (s.len+22) - 44;
+      if (tg.y > tagFloor){ tg.y = tagFloor; tg.vy = 0; tg.vr = 0; }
+      const te = s.g.querySelector('.tag'); if (te) te.setAttribute('transform', `translate(0 ${(s.len+22+tg.y).toFixed(1)}) rotate(${tg.r.toFixed(1)})`);
+      if (b.t > 1.4) s.g.style.opacity = String(Math.max(0, 1-(b.t-1.4)/.5));
+    }
+    s.g.setAttribute('transform', `translate(${s.x} ${oy.toFixed(1)}) rotate(${ang.toFixed(2)})`);
+  }
+  drawParts(dt);
+  requestAnimationFrame(loop);
+}
+
+/* ---------- input ---------- */
+function svgX(e){ const r=$('scene').getBoundingClientRect(); return (e.clientX - r.left)/r.width*VW; }
+let dragging = false;
+$('stage').addEventListener('pointerdown', e=>{
+  audio();
+  const slotEl = e.target.closest && e.target.closest('.slot');
+  if (slotEl){ const k=+slotEl.dataset.i, s=slots[k]; if (s && ready(s)){ child.target = clamp(s.x-62, 30, 610); child.autoSwing = k; } return; }
+  dragging = true; try{ $('stage').setPointerCapture(e.pointerId); }catch(err){}
+  child.target = clamp(svgX(e), 30, 610); child.autoSwing = -1;
+});
+$('stage').addEventListener('pointermove', e=>{ if (dragging) child.target = clamp(svgX(e), 30, 610); });
+['pointerup','pointercancel'].forEach(ev=>$('stage').addEventListener(ev, ()=>{ dragging = false; }));
+function hold(btn, dir){
+  const on = e=>{ e.preventDefault(); keys[dir]=true; try{ btn.setPointerCapture(e.pointerId); }catch(err){} };
+  const off = ()=>{ keys[dir]=false; };
+  btn.addEventListener('pointerdown', on);
+  ['pointerup','pointercancel','lostpointercapture'].forEach(ev=>btn.addEventListener(ev, off));
+}
+hold($('leftBtn'),'left'); hold($('rightBtn'),'right');
+$('swingBtn').addEventListener('click', ()=>trySwing());
+document.addEventListener('keydown', e=>{
+  if (!$('modal').hidden){ if (e.key==='Escape') closeModal(); return; }
+  if (e.key==='ArrowLeft'){ keys.left=true; e.preventDefault(); }
+  else if (e.key==='ArrowRight'){ keys.right=true; e.preventDefault(); }
+  else if (e.key===' ' || e.key==='Enter' || e.key==='ArrowUp'){ e.preventDefault(); if(!e.repeat) trySwing(); }
+  else if (/^[1-5]$/.test(e.key)){ const k=+e.key-1, s=slots[k]; if (s && ready(s)){ child.target=clamp(s.x-62,30,610); child.autoSwing=k; } }
+  else if ((e.key==='s'||e.key==='S') && current) speak(current.es, true);
+});
+document.addEventListener('keyup', e=>{ if (e.key==='ArrowLeft') keys.left=false; if (e.key==='ArrowRight') keys.right=false; });
+window.addEventListener('blur', ()=>{ keys.left = keys.right = false; });
+
+/* ---------- toolbar ---------- */
+$('sayBtn').addEventListener('click', ()=>{ if (current){ pendingWord = null; speak(current.es, true); } });
+$('voiceBtn').addEventListener('click', ()=>{
+  voiceOn = !voiceOn; $('voiceBtn').textContent = 'Voice: ' + (voiceOn?'on':'off'); $('voiceBtn').setAttribute('aria-pressed', String(voiceOn)); store.set('pinata.voice', voiceOn?'1':'0');
+  if (!voiceOn && synth){ speakSeq++; pendingWord = null; synth.cancel(); $('bubble').hidden = true; $('mouthO').classList.remove('talking'); }
+});
+$('soundBtn').addEventListener('click', ()=>{
+  soundOn = !soundOn; $('soundBtn').textContent = 'Sound: ' + (soundOn?'on':'off'); $('soundBtn').setAttribute('aria-pressed', String(soundOn)); store.set('pinata.sound', soundOn?'1':'0');
+});
+if (!document.documentElement.requestFullscreen) $('fsBtn').hidden = true;
+$('fsBtn').addEventListener('click', ()=>{ try{ const p = document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen(); if (p && p.catch) p.catch(()=>{}); }catch(e){} });
+document.addEventListener('fullscreenchange', ()=>{ $('fsBtn').textContent = document.fullscreenElement ? 'Exit full screen' : 'Full screen'; });
+
+/* ---------- word list modal ---------- */
+function openModal(){ $('listText').value = toText(words); $('fillSel').value = String(fillMax); setStatus(''); $('modal').hidden = false; $('listText').focus(); }
+function closeModal(){ $('modal').hidden = true; $('openList').focus(); }
+function setStatus(msg, kind){ $('status').textContent = msg; $('status').className = 'status ' + (kind||''); }
+function decodeText(buf){ try { return new TextDecoder('utf-8',{fatal:true}).decode(buf); } catch(e){ return new TextDecoder('windows-1252').decode(buf); } }
+function loadXLSX(){ return new Promise((res,rej)=>{ if(window.XLSX) return res(window.XLSX); const s=document.createElement('script'); s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'; s.onload=()=>res(window.XLSX); s.onerror=rej; document.head.appendChild(s); }); }
+$('file').addEventListener('change', async e=>{
+  const f = e.target.files[0]; e.target.value=''; if(!f) return;
+  setStatus('Reading ' + f.name + '…');
+  try {
+    let text;
+    if (/\.xlsx?$/i.test(f.name)){
+      const X = await loadXLSX(); const wb = X.read(await f.arrayBuffer(), {type:'array'});
+      const rows = X.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header:1, blankrows:false});
+      text = rows.map(r=>(r||[]).filter(c=>c!=null && String(c).trim()!=='').slice(0,2)).filter(r=>r.length===2).map(r=>r[0]+'\t'+r[1]).join('\n');
+    } else text = decodeText(await f.arrayBuffer());
+    const list = parseList(text);
+    if (!list.length){ setStatus('No word pairs found in that file. Each line needs a Spanish word and its English meaning.', 'err'); return; }
+    $('listText').value = toText(list);
+    setStatus(`Loaded ${list.length} words from ${f.name}. Check them, then press Save and play.`, 'ok');
+  } catch(err){ setStatus('That file could not be read. Try saving it as a .csv or paste the words in.', 'err'); }
+});
+$('save').addEventListener('click', ()=>{
+  const list = parseList($('listText').value);
+  if (list.length < 3 || uniqueEnglish(list) < 3){ setStatus('Add at least 3 words with different English meanings.', 'err'); return; }
+  words = list; fillMax = +$('fillSel').value;
+  usingSample = toText(list) === toText(parseList(SAMPLE));
+  store.set('pinata.words', JSON.stringify(words)); store.set('pinata.fill', String(fillMax));
+  closeModal(); startGame();
+});
+$('useSample').addEventListener('click', ()=>{ $('listText').value = SAMPLE; setStatus('Class list loaded. Press Save and play.', 'ok'); });
+$('cancel').addEventListener('click', closeModal);
+$('modal').addEventListener('click', e=>{ if (e.target===$('modal')) closeModal(); });
+$('openList').addEventListener('click', openModal);
+
+/* ---------- boot ---------- */
+(function boot(){
+  try { const saved = JSON.parse(store.get('pinata.words')||'null');
+    if (Array.isArray(saved) && saved.length>=3 && saved.every(w=>w && typeof w.es==='string' && typeof w.en==='string') && uniqueEnglish(saved)>=3) words = saved; } catch(e){}
+  if (!words.length) words = parseList(SAMPLE);
+  usingSample = toText(words) === toText(parseList(SAMPLE));
+  const f = +store.get('pinata.fill'); if ([3,4,5].includes(f)) fillMax = f;
+  if (store.get('pinata.sound')==='0'){ soundOn=false; $('soundBtn').textContent='Sound: off'; $('soundBtn').setAttribute('aria-pressed','false'); }
+  if (store.get('pinata.voice')==='0'){ voiceOn=false; $('voiceBtn').textContent='Voice: off'; $('voiceBtn').setAttribute('aria-pressed','false'); }
+  buildScene(); sizeCanvas(); new ResizeObserver(sizeCanvas).observe($('stage'));
+  startGame();
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(()=>slots.forEach(s=>s.label && setLabel(s, s.label)));
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
